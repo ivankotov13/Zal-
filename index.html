@@ -146,6 +146,28 @@ h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.02e
 .diary textarea:focus{outline:2px solid var(--rest);outline-offset:1px}
 .diary .empty{color:var(--muted);font-size:14px;margin:0}
 .copybtn{background:none;border:1px solid var(--rest);color:var(--rest);border-radius:999px;padding:4px 12px;font:600 12px var(--body);letter-spacing:0;text-transform:none;cursor:pointer}
+.prog{display:flex;flex-direction:column;gap:10px}
+.prog h2,.editor h3{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0;font-weight:600}
+.editor h3{margin-top:14px}
+.editor{display:flex;flex-direction:column;gap:10px;border:1px solid var(--rest);border-radius:16px;padding:14px}
+#edbody{display:flex;flex-direction:column;gap:10px}
+.edgrid,.excard{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.excard{border:1px solid var(--line);border-radius:12px;padding:10px;position:relative}
+.edgrid label,.excard label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.full{grid-column:1/-1}
+.editor input,.editor select{font:16px var(--body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;min-width:0}
+.editor input:focus,.editor select:focus{outline:2px solid var(--rest);outline-offset:1px}
+.exbtns{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;margin-bottom:-4px}
+.exbtns button,.dayrow button{background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:8px;min-width:36px;height:32px;font:600 15px var(--body);cursor:pointer}
+.exbtns button:disabled{opacity:.3}
+button.danger{color:var(--warn)}
+.dayrow{display:grid;grid-template-columns:72px 26px 1fr 78px 36px;gap:6px;align-items:center}
+.dayrow .wd{font-size:12px;color:var(--muted);text-align:center}
+.edrow{display:flex;gap:10px}
+.edrow.sticky{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);padding:8px;border-radius:14px;border:1px solid var(--line)}
+.edhint,.edmsg{margin:0;font-size:13px;color:var(--muted)}
+.edmsg:empty{display:none}
+.day.addw b{color:var(--rest)}
 .foot{color:var(--muted);font-size:12px}
 @media (prefers-reduced-motion: reduce){.bar{transition:none}}
 </style>
@@ -155,8 +177,8 @@ h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.02e
 
 <div class="wrap">
   <header>
-    <h1>Зал · Rixos Marina</h1>
-    <div class="sub">14–23 октября · 15:30–16:30</div>
+    <h1 id="ttl">Зал · Rixos Marina</h1>
+    <div class="sub" id="subttl">14–23 октября · 15:30–16:30</div>
   </header>
 
   <div class="trip"><span id="tripTxt">Сделано 0 из 7</span><div class="tb"><i id="tripBar"></i></div></div>
@@ -210,6 +232,17 @@ h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.02e
     <div id="diary"></div>
   </section>
 
+  <section class="prog">
+    <h2>Программа</h2>
+    <button class="btn" id="editOpen" type="button">Изменить программу</button>
+    <p class="edmsg" id="edMsg"></p>
+    <div class="editor" id="editor" hidden>
+      <div id="edbody"></div>
+      <div class="edrow sticky"><button class="btn primary" id="edSave" type="button">Сохранить</button><button class="btn" id="edCancel" type="button">Отмена</button></div>
+      <div class="resetrow"><button class="linkbtn" id="edReset" type="button">Вернуть исходную программу</button><span id="edResetAsk" hidden>Вернуть программу как была? Веса и дневник останутся. <button class="linkbtn danger" id="edResetYes" type="button">Да, вернуть</button> <button class="linkbtn" id="edResetNo" type="button">Нет</button></span></div>
+    </div>
+  </section>
+
   <section class="achs">
     <h2><span>Ачивки</span><span id="achCount"></span></h2>
     <div class="achgrid" id="ach"></div>
@@ -237,7 +270,7 @@ const WARM = {
   up:'Разведение резинки 2×15, отжимания на лопатках ×10, вращения плеч с палкой ×10',
   low:'Шаги в сторону с резинкой 2×10, присед без веса ×10, «good morning» без веса ×10'
 };
-const W = {
+let W = {
   V1:{t:'Верх 1',type:'up',ex:[
     {n:'Жим штанги лёжа',s:[3,4],r:'6–8',w:'60–75 кг',rest:120,ws:true,v:'жим штанги лёжа техника'},
     {n:'Тяга штанги в наклоне',s:3,r:'8–10',w:'50–60 кг',rest:120,v:'тяга штанги в наклоне техника'},
@@ -275,7 +308,7 @@ const W = {
     {n:'Ходьба с гантелями',s:3,r:'30 м',w:'как 18.10',rest:90,v:'прогулка фермера техника'},
     {n:'Махи гантелями в стороны',s:2,r:'12–15',w:'7–9 кг',rest:60,v:'махи гантелями в стороны техника'}]}
 };
-const DAYS = [
+let DAYS = [
   {d:'14.10',wd:'Ср',w:'V1',wk:1},{d:'15.10',wd:'Чт',w:'N1',wk:1},
   {d:'17.10',wd:'Сб',w:'V2',wk:1},{d:'18.10',wd:'Вс',w:'N2',wk:1},
   {d:'20.10',wd:'Вт',w:'V1',wk:2},{d:'21.10',wd:'Ср',w:'N1',wk:2},
@@ -624,6 +657,131 @@ $('copyDiary').onclick=()=>{
   try{ navigator.clipboard.writeText(t).then(ok,()=>fallback()); }catch(e){ fallback(); }
   function fallback(){ const ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');ok();}catch(e){} ta.remove(); }
 };
+// ---------- program editor ----------
+const DEF = JSON.parse(JSON.stringify({title:$('ttl').textContent, sub:$('subttl').textContent, W, DAYS}));
+function applyProg(p){
+  W = JSON.parse(JSON.stringify(p.W)); DAYS = JSON.parse(JSON.stringify(p.DAYS));
+  $('ttl').textContent = p.title; $('subttl').textContent = p.sub;
+}
+if(S.prog){ try{ applyProg(S.prog); }catch(e){ delete S.prog; } }
+let ED = null, edW = null;
+const esc = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const WD = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+function wdOf(d){ const m=String(d).match(/^(\d{1,2})\.(\d{1,2})$/); if(!m) return ''; const y=new Date().getFullYear(); return WD[new Date(y,+m[2]-1,+m[1]).getDay()]; }
+function sStr(s){ return Array.isArray(s)? s.join('/') : String(s==null?'':s); }
+function sParse(t){ const p=String(t).split(/[\/,]/).map(x=>parseInt(x,10)).filter(n=>n>0); return p.length>1? p.slice(0,2) : (p[0]||3); }
+function openEditor(){
+  ED = JSON.parse(JSON.stringify({title:$('ttl').textContent, sub:$('subttl').textContent, W, DAYS}));
+  edW = edW && ED.W[edW] ? edW : Object.keys(ED.W)[0];
+  $('editor').hidden = false; $('editOpen').hidden = true; renderEditor();
+  $('editor').scrollIntoView({block:'start',behavior:'smooth'});
+}
+function closeEditor(){ ED=null; $('editor').hidden = true; $('editOpen').hidden = false; }
+function exCard(e,i,n){
+  const btns = `<div class="exbtns"><button type="button" data-a="up" data-i="${i}" ${i===0?'disabled':''} aria-label="Выше">↑</button><button type="button" data-a="down" data-i="${i}" ${i===n-1?'disabled':''} aria-label="Ниже">↓</button><button type="button" data-a="del" data-i="${i}" class="danger" aria-label="Удалить">✕</button></div>`;
+  const name = `<label class="full">Упражнение<input data-f="n" data-i="${i}" value="${esc(e.n)}"></label>`;
+  if(e.interval) return `<div class="excard">${btns}${name}
+    <label>Раунды<input data-f="rounds" data-i="${i}" inputmode="numeric" value="${e.interval.rounds}"></label>
+    <label>Работа, с<input data-f="work" data-i="${i}" inputmode="numeric" value="${e.interval.work}"></label>
+    <label>Отдых, с<input data-f="irest" data-i="${i}" inputmode="numeric" value="${e.interval.rest}"></label></div>`;
+  return `<div class="excard">${btns}${name}
+    <label>Подходы<input data-f="s" data-i="${i}" value="${esc(sStr(e.s))}"></label>
+    <label>Повторы<input data-f="r" data-i="${i}" value="${esc(e.r)}"></label>
+    <label>Вес<input data-f="w" data-i="${i}" value="${esc(e.w)}"></label>
+    <label>Отдых, с<input data-f="rest" data-i="${i}" inputmode="numeric" value="${e.rest}"></label></div>`;
+}
+function renderEditor(){
+  const keys = Object.keys(ED.W), w = ED.W[edW];
+  const tabs = keys.map(k=>`<button type="button" class="day" data-tab="${k}" aria-pressed="${k===edW}"><b>${esc(ED.W[k].t)}</b><span>${ED.W[k].ex.length} упр.</span></button>`).join('')
+    + `<button type="button" class="day addw" data-a="neww"><b>+</b><span>новая</span></button>`;
+  const days = ED.DAYS.map((d,i)=>`<div class="dayrow">
+      <input data-df="d" data-i="${i}" value="${esc(d.d)}" placeholder="дд.мм" inputmode="decimal" aria-label="Дата">
+      <span class="wd">${wdOf(d.d)}</span>
+      <select data-df="w" data-i="${i}" aria-label="Тренировка">${keys.map(k=>`<option value="${k}"${k===d.w?' selected':''}>${esc(ED.W[k].t)}</option>`).join('')}</select>
+      <select data-df="wk" data-i="${i}" aria-label="Неделя"><option value="1"${d.wk==1?' selected':''}>нед. 1</option><option value="2"${d.wk==2?' selected':''}>нед. 2</option></select>
+      <button type="button" data-a="dday" data-i="${i}" class="danger" aria-label="Удалить день">✕</button></div>`).join('');
+  $('edbody').innerHTML = `
+    <div class="edgrid">
+      <label class="full">Название<input data-g="title" value="${esc(ED.title)}"></label>
+      <label class="full">Подпись<input data-g="sub" value="${esc(ED.sub)}"></label>
+    </div>
+    <h3>Тренировки</h3>
+    <div class="days">${tabs}</div>
+    <div class="edgrid">
+      <label>Название тренировки<input data-g="wt" value="${esc(w.t)}"></label>
+      <label>Разминка<select data-g="wtype"><option value="up"${w.type==='up'?' selected':''}>верх тела</option><option value="low"${w.type==='low'?' selected':''}>ноги</option></select></label>
+    </div>
+    <p class="edhint">Подходы: одно число или «3/4» — 3 на первой неделе, 4 на второй.</p>
+    ${w.ex.map((e,i)=>exCard(e,i,w.ex.length)).join('')}
+    <div class="edrow"><button type="button" class="btn" data-a="addex">+ Упражнение</button><button type="button" class="btn" data-a="addint">+ Интервалы</button></div>
+    <button type="button" class="linkbtn danger" data-a="delw">Удалить тренировку «${esc(w.t)}»</button>
+    <h3>Расписание</h3>
+    ${days}
+    <div class="edrow"><button type="button" class="btn" data-a="addday">+ День</button></div>`;
+}
+function edInput(t){
+  if(!ED) return;
+  const w = ED.W[edW];
+  if(t.dataset.g){
+    const g=t.dataset.g;
+    if(g==='title') ED.title=t.value; else if(g==='sub') ED.sub=t.value;
+    else if(g==='wt') w.t=t.value; else if(g==='wtype') w.type=t.value;
+    return;
+  }
+  if(t.dataset.f){
+    const e=w.ex[+t.dataset.i], f=t.dataset.f, v=t.value;
+    if(f==='n'){ e.n=v; e.v=v+' техника'; }
+    else if(f==='s') e.s=sParse(v);
+    else if(f==='rest') e.rest=Math.max(0,parseInt(v,10)||0);
+    else if(f==='rounds'||f==='work') e.interval[f]=Math.max(1,parseInt(v,10)||1);
+    else if(f==='irest') e.interval.rest=Math.max(0,parseInt(v,10)||0);
+    else e[f]=v;
+    return;
+  }
+  if(t.dataset.df){
+    const d=ED.DAYS[+t.dataset.i], f=t.dataset.df;
+    if(f==='wk') d.wk=+t.value; else d[f]=t.value;
+    if(f==='d'){ d.wd=wdOf(t.value); const s=t.parentNode.querySelector('.wd'); if(s) s.textContent=d.wd; }
+  }
+}
+$('edbody').addEventListener('input',e=>edInput(e.target));
+$('edbody').addEventListener('change',e=>edInput(e.target));
+$('edbody').addEventListener('click',ev=>{
+  const b=ev.target.closest('button'); if(!b||!ED) return;
+  if(b.dataset.tab){ edW=b.dataset.tab; renderEditor(); return; }
+  const a=b.dataset.a, i=+b.dataset.i, w=ED.W[edW];
+  if(a==='up'&&i>0){ [w.ex[i-1],w.ex[i]]=[w.ex[i],w.ex[i-1]]; }
+  else if(a==='down'&&i<w.ex.length-1){ [w.ex[i+1],w.ex[i]]=[w.ex[i],w.ex[i+1]]; }
+  else if(a==='del'){ w.ex.splice(i,1); }
+  else if(a==='addex'){ w.ex.push({n:'Новое упражнение',s:3,r:'8–10',w:'',rest:90,v:'Новое упражнение техника'}); }
+  else if(a==='addint'){ w.ex.push({n:'Финишер: интервалы',interval:{rounds:8,work:20,rest:40},inote:'Высокий темп',rname:'Лёгкая работа',v:'интервальная тренировка'}); }
+  else if(a==='neww'){ let k='T'+Date.now().toString(36); ED.W[k]={t:'Новая тренировка',type:'up',ex:[{n:'Новое упражнение',s:3,r:'8–10',w:'',rest:90,ws:true,v:'Новое упражнение техника'}]}; edW=k; }
+  else if(a==='delw'){ const ks=Object.keys(ED.W); if(ks.length<2) return; delete ED.W[edW]; ED.DAYS=ED.DAYS.filter(d=>d.w!==edW); edW=Object.keys(ED.W)[0]; }
+  else if(a==='addday'){ const last=ED.DAYS[ED.DAYS.length-1]; ED.DAYS.push({d:'',wd:'',w:last?last.w:edW,wk:last?last.wk:1}); }
+  else if(a==='dday'){ ED.DAYS.splice(i,1); }
+  else return;
+  renderEditor();
+});
+function dkey(d){ const m=String(d).match(/^(\d{1,2})\.(\d{1,2})$/); return m? (+m[2])*100+(+m[1]) : 9999; }
+function normDate(d){ const m=String(d).trim().replace(',', '.').match(/^(\d{1,2})\.(\d{1,2})$/); return m? m[1].padStart(2,'0')+'.'+m[2].padStart(2,'0') : null; }
+$('edSave').onclick=()=>{
+  const bad=[];
+  ED.DAYS.forEach(d=>{ const n=normDate(d.d); if(n){ d.d=n; d.wd=wdOf(n); } else bad.push(d); });
+  ED.DAYS=ED.DAYS.filter(d=>!bad.includes(d)&&ED.W[d.w]);
+  Object.values(ED.W).forEach(w=>{ w.ex=w.ex.filter(e=>String(e.n).trim()); });
+  ED.DAYS.sort((a,b)=>dkey(a.d)-dkey(b.d));
+  if(!ED.DAYS.length){ $('edMsg').textContent='Добавь хотя бы один день с датой в формате дд.мм.'; return; }
+  S.prog = JSON.parse(JSON.stringify(ED)); save(); applyProg(S.prog);
+  $('edMsg').textContent = bad.length ? `Сохранено. Дней без даты убрано: ${bad.length}.` : '';
+  closeEditor(); renderAch(); dayIdx=pickToday(); load();
+  toast(`${icon('cal')}<div><b>Программа сохранена</b><span>Веса и дневник на месте</span></div>`);
+};
+$('edCancel').onclick=closeEditor;
+$('edReset').onclick=()=>{ $('edReset').hidden=true; $('edResetAsk').hidden=false; };
+$('edResetNo').onclick=()=>{ $('edReset').hidden=false; $('edResetAsk').hidden=true; };
+$('edResetYes').onclick=()=>{ delete S.prog; save(); applyProg(DEF); $('edReset').hidden=false; $('edResetAsk').hidden=true; closeEditor(); dayIdx=pickToday(); load(); };
+$('editOpen').onclick=openEditor;
+
 renderAch();
 dayIdx = pickToday(); load();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
